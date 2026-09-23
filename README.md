@@ -42,7 +42,7 @@ RPC is reachable only over Railway's private network. The service has no public 
 
 | Service | Image | Networking and health | Persistent storage |
 | --- | --- | --- | --- |
-| `bitcoind` | GitHub Dockerfile using the official Knots 29.4.2 binaries, SHA256-pinned | Private only: RPC and REST on `8332`, P2P on `8333`; readiness path `/rest/chaininfo.json` | `/data` for blocks, chain state and peer data |
+| `bitcoind` | GitHub Dockerfile using the official Knots 29.4.2 binaries, SHA256-pinned | Private only: RPC on `8332`, P2P on `8333`; restarts on failure | `/data` for blocks, chain state and peer data |
 
 Other services in the same project reach the node at `http://bitcoind.railway.internal:8332` with `BITCOIN_RPC_USER` and `BITCOIN_RPC_PASSWORD`, which you can reference as `${{bitcoind.BITCOIN_RPC_USER}}` and `${{bitcoind.BITCOIN_RPC_PASSWORD}}`. On every start the entrypoint turns the generated password into a salted `rpcauth` hash, so the password is never written to the volume or shown in the process list. `bitcoind` runs as an unprivileged `bitcoin` user.
 
@@ -60,7 +60,7 @@ Other services in the same project reach the node at `http://bitcoind.railway.in
 
 To run `bitcoin-cli`, open a shell with `railway ssh --service bitcoind` and run `bitcoin-cli -datadir=/data -chain=main -rpcport=8332 getblockchaininfo`. Adjust `-chain` if you changed `BITCOIN_CHAIN`.
 
-The REST interface is enabled so Railway can check readiness without credentials; it serves read-only chain data on the private network. Railway volumes preserve state across deployments but are not backups. Keep the built-in wallet disabled, or back it up yourself if you turn it on.
+Railway HTTP health checks cannot target `bitcoind`'s RPC or REST endpoints, so the service relies on Railway's restart-on-failure policy, and `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=120` gives `bitcoind` two minutes to flush its database on redeploys. Railway volumes preserve state across deployments but are not backups. Keep the built-in wallet disabled, or back it up yourself if you turn it on.
 
 This is a community-maintained deployment package and does not imply affiliation with or endorsement by Bitcoin Knots.
 

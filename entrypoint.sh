@@ -29,9 +29,11 @@ fi
 salt="$(openssl rand -hex 16)"
 hmac="$(printf '%s' "$BITCOIN_RPC_PASSWORD" | openssl dgst -sha256 -hmac "$salt" | sed 's/^.*= //')"
 
-# Railway's private DNS answers with IPv6 first, so also bind IPv6 when the
+# Railway's private DNS answers with IPv6 first, so listen on IPv6 when the
 # container has a non-loopback IPv6 address (a failed bind is fatal for
 # bitcoind). On Railway, give the private network a moment to come up.
+# The RPC server's [::] socket is dual-stack and also accepts IPv4, so it must
+# not be combined with a separate 0.0.0.0 bind on the same port.
 has_ipv6() { awk '$6 != "lo" { found = 1 } END { exit !found }' /proc/net/if_inet6 2>/dev/null; }
 tries=0
 while ! has_ipv6 && [ -n "${RAILWAY_PRIVATE_DOMAIN:-}" ] && [ "$tries" -lt 10 ]; do
@@ -40,6 +42,8 @@ while ! has_ipv6 && [ -n "${RAILWAY_PRIVATE_DOMAIN:-}" ] && [ "$tries" -lt 10 ];
 done
 if has_ipv6; then
   set -- -rpcbind="[::]:$rpc_port" -bind="[::]:$p2p_port" "$@"
+else
+  set -- -rpcbind="0.0.0.0:$rpc_port" "$@"
 fi
 
 set -- \
@@ -48,10 +52,8 @@ set -- \
   -printtoconsole=1 \
   -nodebuglogfile \
   -server=1 \
-  -rest=1 \
   -rpcauth="$BITCOIN_RPC_USER:$salt\$$hmac" \
   -rpcport="$rpc_port" \
-  -rpcbind="0.0.0.0:$rpc_port" \
   -rpcallowip=0.0.0.0/0 \
   -rpcallowip=::/0 \
   -listen=1 \
