@@ -29,9 +29,16 @@ fi
 salt="$(openssl rand -hex 16)"
 hmac="$(printf '%s' "$BITCOIN_RPC_PASSWORD" | openssl dgst -sha256 -hmac "$salt" | sed 's/^.*= //')"
 
-# Railway's private network is IPv6; also bind IPv6 when the container has it,
-# since a failed bind is fatal for bitcoind.
-if [ -s /proc/net/if_inet6 ]; then
+# Railway's private DNS answers with IPv6 first, so also bind IPv6 when the
+# container has a non-loopback IPv6 address (a failed bind is fatal for
+# bitcoind). On Railway, give the private network a moment to come up.
+has_ipv6() { awk '$6 != "lo" { found = 1 } END { exit !found }' /proc/net/if_inet6 2>/dev/null; }
+tries=0
+while ! has_ipv6 && [ -n "${RAILWAY_PRIVATE_DOMAIN:-}" ] && [ "$tries" -lt 10 ]; do
+  tries=$((tries + 1))
+  sleep 1
+done
+if has_ipv6; then
   set -- -rpcbind="[::]:$rpc_port" -bind="[::]:$p2p_port" "$@"
 fi
 
