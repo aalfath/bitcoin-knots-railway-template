@@ -1,5 +1,7 @@
 # Deploy and Host Bitcoin Knots on Railway
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template/bitcoin-knots?utm_medium=integration&utm_source=button&utm_campaign=bitcoin-knots)
+
 Bitcoin Knots is a Bitcoin full node derived from Bitcoin Core and maintained by Luke Dashjr. It downloads and independently validates every block, applies a stricter transaction relay policy, and exposes the standard `bitcoind` JSON-RPC interface, so your wallets, indexers and scripts can rely on a node you control instead of a third party.
 
 ## About Hosting Bitcoin Knots
